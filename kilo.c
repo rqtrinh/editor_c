@@ -36,8 +36,8 @@ struct editorConfig E;
 
 //Terminal
 void die(const char *s) {
-    write(STDOUT_FILENO, "\x1b[2J" , 4);
-    write(STDOUT_FILENO, "\x1b[H" , 3);
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
 
     perror(s);
     exit(1);
@@ -53,14 +53,14 @@ void enableRawMode() {
     atexit(disableRawMode);
 
     struct termios raw = E.orig_termios;
-    raw.c_lflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP| IXON);
-    raw.c_lflag &= ~(OPOST);
-    raw.c_lflag |= (CS8);
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP| IXON);
+    raw.c_oflag &= ~(OPOST);
+    raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
 
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcgetattr");
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
 int editorReadKey() {
@@ -99,7 +99,7 @@ int editorReadKey() {
                     case 'F': return END_KEY;
                 }
             }
-        } else if (seq[0] == '0') {
+        } else if (seq[0] == 'O') {
             switch (seq[1]) {
                 case 'H': return HOME_KEY;
                 case 'F': return END_KEY;
@@ -184,7 +184,7 @@ void editorDrawRows(struct abuf *ab) {
             abAppend(ab, "~", 1);
         }
 
-        abAppend(ab, "x1b[K", 3);
+        abAppend(ab, "\x1b[K", 3);
         if (y < E.screenrows - 1) {
             abAppend(ab, "\r\n", 2);
         }
@@ -202,9 +202,12 @@ void editorRefreshScreen() {
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
     abAppend(&ab, buf, strlen(buf));
 
+    abAppend(&ab, "\x1b[?25h", 6);
+
     write(STDOUT_FILENO, ab.b, ab.len);
     abFree(&ab);
 }
+
 //Input
 void editorMoveCursor(int key) {
     switch (key) {
